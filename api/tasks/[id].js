@@ -1,5 +1,5 @@
 // /api/tasks/:id
-// PATCH  -> actualiza uno o más campos de una tarea
+// PATCH  -> actualiza una tarea (cambio de estado, o edición completa desde el formulario)
 // DELETE -> elimina una sola tarea
 
 const { neon } = require('@neondatabase/serverless');
@@ -20,51 +20,47 @@ function toApi(row) {
   };
 }
 
-// Mapa de campos que el frontend puede enviar -> nombre real de la columna en SQL.
-const FIELD_MAP = {
-  title: 'title',
-  subject: 'subject',
-  difficulty: 'difficulty',
-  status: 'status',
-  important: 'important',
-  dueDate: 'due_date',
-  completedAt: 'completed_at',
-  notes: 'notes',
-};
-
 module.exports = async function handler(req, res) {
   const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Falta el id en la URL' });
+  }
 
   try {
     if (req.method === 'PATCH') {
       const b = req.body || {};
-      const columns = [];
-      const values = [];
 
-      // Solo se actualizan los campos que el cliente realmente envió, para no
-      // pisar por accidente el resto de la fila con NULL.
-      for (const key of Object.keys(FIELD_MAP)) {
-        if (Object.prototype.hasOwnProperty.call(b, key)) {
-          columns.push(FIELD_MAP[key]);
-          values.push(b[key]);
-        }
-      }
-      if (columns.length === 0) {
-        return res.status(400).json({ error: 'No enviaste ningún campo para actualizar.' });
+      if (Object.prototype.hasOwnProperty.call(b, 'status')) {
+        const rows = await sql`
+          UPDATE tasks
+          SET status = ${b.status}, completed_at = ${b.completedAt ?? null}
+          WHERE id = ${id}
+          RETURNING *`;
+        if (!rows[0]) return res.status(404).json({ error: 'Tarea no encontrada.' });
+        return res.status(200).json(toApi(rows[0]));
       }
 
-      // $1 = id, $2.. = valores en el mismo orden que "columns"
-      const setClause = columns.map((col, i) => `${col} = $${i + 2}`).join(', ');
-      const rows = await sql.query(
-        `UPDATE tasks SET ${setClause} WHERE id = $1 RETURNING *`,
-        [id, ...values]
-      );
-      if (!rows[0]) return res.status(404).json({ error: 'Tarea no encontrada.' });
-      return res.status(200).json(toApi(rows[0]));
+      if (Object.prototype.hasOwnProperty.call(b, 'title')) {
+        const rows = await sql`
+          UPDATE tasks
+          SET title = ${b.title},
+              subject = ${b.subject},
+              difficulty = ${b.difficulty},
+              due_date = ${b.dueDate ?? null},
+              notes = ${b.notes ?? null},
+              important = ${!!b.important}
+          WHERE id = ${id}
+          RETURNING *`;
+        if (!rows[0]) return res.status(404).json({ error: 'Tarea no encontrada.' });
+        return res.status(200).json(toApi(rows[0]));
+      }
+
+      return res.status(400).json({ error: 'No se reconocieron los campos enviados para actualizar.' });
     }
 
     if (req.method === 'DELETE') {
-      await sql.query('DELETE FROM tasks WHERE id = $1', [id]);
+      await sql`DELETE FROM tasks WHERE id = ${id}`;
       return res.status(200).json({ ok: true });
     }
 
@@ -72,6 +68,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido' });
   } catch (err) {
     console.error('Error en /api/tasks/[id]:', err);
-    return res.status(500).json({ error: 'Error del servidor al hablar con la base de datos.' });
+    return res.status(500).json({
+      error: 'Error del servidor al hablar con la base de datos.',
+      detail: err && err.message ? err.message : String(err),
+    });
   }
 };
