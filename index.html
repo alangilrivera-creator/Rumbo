@@ -360,6 +360,25 @@ ul{margin:0;padding:0;list-style:none;}
 .reset-hint{font-size:.82rem;color:var(--ink-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .reset-hint[hidden]{display:none;}
 
+/* ============ REPORTES ============ */
+.report-status{font-size:.82rem;margin:-10px 0 18px;}
+.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px;}
+.report-card{
+  background:var(--paper-card);border:1px solid var(--line);border-radius:var(--radius-m);
+  padding:18px 20px;box-shadow:var(--shadow-card);
+}
+.report-card h3{font-size:.95rem;margin-bottom:14px;}
+.report-table-card{overflow-x:auto;}
+.bar-chart{display:flex;flex-direction:column;gap:10px;}
+.bar-row{display:grid;grid-template-columns:112px 1fr 30px;align-items:center;gap:10px;}
+.bar-row-label{font-size:.8rem;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-row-track{height:14px;background:var(--tint-track);border-radius:7px;overflow:hidden;}
+.bar-row-fill{height:100%;background:var(--brass);border-radius:7px;transition:width .3s ease;}
+.bar-row-value{font-family:var(--font-mono);font-size:.76rem;color:var(--ink);text-align:right;}
+.report-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+.report-table th,.report-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);}
+.report-table th{color:var(--ink-soft);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.02em;}
+
 /* ============ MODAL ============ */
 .modal-overlay{
   position:fixed;inset:0;background:var(--overlay-scrim);
@@ -504,6 +523,10 @@ ul{margin:0;padding:0;list-style:none;}
         <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M3 18 L9 8 L13 14 L16 9.5 L21 18"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         Progreso
       </button>
+      <button type="button" class="nav-item" data-view="reportes">
+        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><line x1="5" y1="20" x2="5" y2="11"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="14.5"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+        Reportes
+      </button>
     </nav>
     <div class="sidebar-footer">
       <div class="streak-chip"><span class="streak-dot"></span><span id="streakCount">0</span> días de racha</div>
@@ -613,6 +636,53 @@ ul{margin:0;padding:0;list-style:none;}
         </p>
       </div>
     </section>
+
+    <!-- ===== REPORTES ===== -->
+    <section class="view" id="view-reportes" hidden>
+      <div class="toolbar">
+        <select id="reportFilterSubject" aria-label="Filtrar por asignatura">
+          <option value="all">Todas las asignaturas</option>
+        </select>
+        <select id="reportFilterStatus" aria-label="Filtrar por estado">
+          <option value="all">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="progreso">En progreso</option>
+          <option value="completado">Completado</option>
+        </select>
+        <select id="reportFilterDifficulty" aria-label="Filtrar por dificultad">
+          <option value="all">Todas las dificultades</option>
+          <option value="1">1 · Fácil</option>
+          <option value="2">2 · Medio</option>
+          <option value="3">3 · Difícil</option>
+        </select>
+      </div>
+
+      <div class="stat-strip" id="reportesStats"></div>
+      <p class="report-status" id="reportesStatus" hidden></p>
+
+      <div class="report-grid">
+        <div class="report-card">
+          <h3>Tareas por asignatura</h3>
+          <div class="bar-chart" id="chartAsignatura"></div>
+        </div>
+        <div class="report-card">
+          <h3>Tareas por estado</h3>
+          <div class="bar-chart" id="chartEstado"></div>
+        </div>
+        <div class="report-card">
+          <h3>Pendientes por asignatura</h3>
+          <div class="bar-chart" id="chartPendientes"></div>
+        </div>
+      </div>
+
+      <div class="report-card report-table-card">
+        <h3>Dificultad promedio por asignatura</h3>
+        <table class="report-table" id="tablaDificultad">
+          <thead><tr><th>Asignatura</th><th>Tareas</th><th>Dificultad promedio</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -632,6 +702,10 @@ ul{margin:0;padding:0;list-style:none;}
   <button type="button" class="bn-item" data-view="progreso">
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M3 18 L9 8 L13 14 L16 9.5 L21 18"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     Progreso
+  </button>
+  <button type="button" class="bn-item" data-view="reportes">
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><line x1="5" y1="20" x2="5" y2="11"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="14.5"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+    Reportes
   </button>
 </nav>
 
@@ -692,7 +766,8 @@ const VIEW_META = {
   inicio: { eyebrow: ()=>capFirst(new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})), title:'Tu ruta de hoy', sub:()=>introSub(), showAdd:true },
   tareas: { eyebrow:'ORGANIZAR TAREAS', title:'Tareas', sub:'Mueve cada tarea por su camino: por hacer, en progreso y completado.', showAdd:true },
   recomendaciones: { eyebrow:'SISTEMA DE RECOMENDACIÓN POR DIFICULTAD', title:'Recomendaciones', sub:'Ordenadas según tu nivel en cada materia, las fechas límite y lo que marcaste como importante.', showAdd:false },
-  progreso: { eyebrow:'TU AVANCE', title:'Progreso', sub:'Cómo cambia tu nivel de dificultad por materia con el tiempo.', showAdd:false }
+  progreso: { eyebrow:'TU AVANCE', title:'Progreso', sub:'Cómo cambia tu nivel de dificultad por materia con el tiempo.', showAdd:false },
+  reportes: { eyebrow:'MÓDULO DE REPORTES', title:'Reportes', sub:'Indicadores y gráficos generados desde las vistas de Neon, con filtros por asignatura, estado y dificultad.', showAdd:false }
 };
 
 /* ============ CONFIGURACIÓN ============ */
@@ -1161,12 +1236,105 @@ function renderProgreso(){
   renderSubjectCharts();
 }
 
+/* ============ RENDER: REPORTES ============ */
+// Este módulo consulta un endpoint propio (/api/reports) que a su vez lee
+// las 3 vistas SQL creadas en Neon (vw_resumen_tareas_asignatura,
+// vw_resumen_estado_tareas, vw_tareas_pendientes_asignatura) cuando no hay
+// filtros activos, y recalcula los mismos indicadores sobre "tasks" cuando
+// el usuario aplica un filtro (las vistas no aceptan parámetros y no se
+// modifican).
+const REPORTS_API_BASE = '/api/reports';
+const STATUS_LABEL = { pendiente:'Pendiente', progreso:'En progreso', completado:'Completado' };
+
+async function apiGetReports(params){
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${REPORTS_API_BASE}${qs ? '?' + qs : ''}`);
+  if(!res.ok) throw new Error('No se pudieron cargar los reportes.');
+  return res.json();
+}
+function populateReportFilters(){
+  const sel = document.getElementById('reportFilterSubject');
+  const current = sel.value || 'all';
+  const subjects = Array.from(new Set(state.tasks.map(t=>t.subject))).sort((a,b)=>a.localeCompare(b,'es'));
+  sel.innerHTML = `<option value="all">Todas las asignaturas</option>` + subjects.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  sel.value = (subjects.includes(current) || current==='all') ? current : 'all';
+}
+function renderBarChart(containerId, rows, labelKey, valueKey, labelMap){
+  const el = document.getElementById(containerId);
+  if(!rows || !rows.length){ el.innerHTML = `<p class="column-empty">Sin datos para este filtro.</p>`; return; }
+  const max = Math.max(1, ...rows.map(r=>Number(r[valueKey])));
+  el.innerHTML = rows.map(r=>{
+    const value = Number(r[valueKey]);
+    const pct = value>0 ? Math.max(Math.round((value/max)*100), 4) : 0;
+    const label = labelMap ? (labelMap[r[labelKey]] || r[labelKey]) : r[labelKey];
+    return `<div class="bar-row">
+      <span class="bar-row-label" title="${esc(label)}">${esc(label)}</span>
+      <span class="bar-row-track"><span class="bar-row-fill" style="width:${pct}%"></span></span>
+      <span class="bar-row-value">${value}</span>
+    </div>`;
+  }).join('');
+}
+function renderDificultadTable(rows){
+  const tbody = document.querySelector('#tablaDificultad tbody');
+  if(!rows || !rows.length){
+    tbody.innerHTML = `<tr><td colspan="3" class="column-empty">Sin datos para este filtro.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>${esc(r.subject)}</td>
+      <td>${esc(r.total_tareas)}</td>
+      <td>${Number(r.dificultad_promedio).toFixed(2)}</td>
+    </tr>`).join('');
+}
+function computeReportesStats(payload){
+  const byStatus = Object.fromEntries((payload.porEstado||[]).map(r=>[r.status, Number(r.total_tareas)]));
+  return [
+    { label:'Total de tareas', value:String(payload.totalTareas||0) },
+    { label:'Pendientes', value:String(byStatus.pendiente||0) },
+    { label:'En progreso', value:String(byStatus.progreso||0) },
+    { label:'Completadas', value:String(byStatus.completado||0) }
+  ];
+}
+let reportesLoadToken = 0;
+async function loadReportes(){
+  populateReportFilters();
+  const subject = document.getElementById('reportFilterSubject').value;
+  const status = document.getElementById('reportFilterStatus').value;
+  const difficulty = document.getElementById('reportFilterDifficulty').value;
+  const params = {};
+  if(subject!=='all') params.subject = subject;
+  if(status!=='all') params.status = status;
+  if(difficulty!=='all') params.difficulty = difficulty;
+
+  const token = ++reportesLoadToken;
+  const statusEl = document.getElementById('reportesStatus');
+  statusEl.hidden = true;
+
+  try{
+    const payload = await apiGetReports(params);
+    if(token !== reportesLoadToken) return; // llegó una respuesta vieja, se descarta
+    renderStatStrip('reportesStats', computeReportesStats(payload));
+    renderBarChart('chartAsignatura', payload.porAsignatura, 'subject', 'total_tareas');
+    renderBarChart('chartEstado', payload.porEstado, 'status', 'total_tareas', STATUS_LABEL);
+    renderBarChart('chartPendientes', payload.pendientesPorAsignatura, 'subject', 'tareas_pendientes');
+    renderDificultadTable(payload.porAsignatura);
+  }catch(e){
+    if(token !== reportesLoadToken) return;
+    statusEl.hidden = false;
+    statusEl.style.color = 'var(--hard)';
+    statusEl.textContent = 'No se pudieron cargar los reportes. Revisa tu conexión e inténtalo de nuevo.';
+  }
+}
+function renderReportes(){ loadReportes(); }
+
 /* ============ VIEW SWITCHING ============ */
 function renderCurrentView(){
   if(state.currentView==='inicio') renderInicio();
   else if(state.currentView==='tareas') renderTareasBoard();
   else if(state.currentView==='recomendaciones') renderRecomendaciones();
   else if(state.currentView==='progreso') renderProgreso();
+  else if(state.currentView==='reportes') renderReportes();
   updateStreakChip();
 }
 function switchView(view){
@@ -1327,6 +1495,10 @@ function wireStaticEvents(){
 
   ['filterSubject','filterDifficulty','sortTasks'].forEach(id=>{
     document.getElementById(id).addEventListener('change', renderTareasBoard);
+  });
+
+  ['reportFilterSubject','reportFilterStatus','reportFilterDifficulty'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', loadReportes);
   });
 
   document.getElementById('btnPomodoroToggle').addEventListener('click', togglePomodoro);
