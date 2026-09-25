@@ -36,7 +36,10 @@ function aggregate(tasks) {
 
     byStatus.set(t.status, (byStatus.get(t.status) || 0) + 1);
 
-    if (t.status === 'pendiente') {
+    // Coincide con el criterio real de vw_tareas_pendientes_asignatura:
+    // cuenta todo lo que no está "completado" (pendiente + en progreso),
+    // no solo status === 'pendiente'.
+    if (t.status !== 'completado') {
       pendingBySubject.set(t.subject, (pendingBySubject.get(t.subject) || 0) + 1);
     }
   }
